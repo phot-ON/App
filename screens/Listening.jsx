@@ -12,216 +12,9 @@ import RNFS from 'react-native-fs';
 //import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 
-
-function Sync({AisPolling}) {
-
-  const [IDisPolling , IDsetIsPolling] = useState(true)
-  const [IRisPolling , IRsetIsPolling] = useState(true)
-  const [RHisPolling , RHsetIsPolling] = useState(true)
-
-
-
-  useEffect(() => {
-    if(!AisPolling) {
-      IDsetIsPolling(false)
-      IRsetIsPolling(false)
-      RHsetIsPolling(false)
-      return;
-    }
-  },[AisPolling])
-
-  return <>
-    <ImageDispatcher isPolling={IDisPolling} />
-    <ImageReceiver isPolling={IRisPolling} />
-    <RequestHandler isPolling={RHisPolling}/>
-  </>
-}
-
-function ImageDispatcher({isPolling , intrv}) {
-
-  let photos = {}
-  const serverUrl = useRecoilValue(motherServerAtom)
-  const relayServerUrl = useRecoilValue(relayServerAtom)
-  const relayServerKey = useRecoilValue(relayServerKeyAtom)
-  const keypair = useRecoilValue(keyPairAtom)
-  const sID = useRecoilValue(sessionIDAtom)
-  const uID = useRecoilValue(userIDAtom)
-  const sessionPass = useRecoilValue(sessionPassAtom)
-  const authblob = useRecoilValue(authblobSelector)
-  const [setIntervalID , SetsetIntervalID] = useState(0)
-
-  if (!intrv) intrv=30000
-  if (isPolling == null) isPolling = true
-
-  async function poll() {
-    let lastTS =  await AsyncStorage.getItem("lastts")
-    lastTS = Number(lastTS)
-    if(!isPolling){
-      return;
-    }
-    try {
-      console.log("FETCHING IMAGES AFTER TS: "+lastTS)
-      photos = await CameraRoll.getPhotos({
-        first: 10,
-        assetType: 'Photos',
-        fromTime: lastTS
-      });
-
-    }
-    catch (error) {
-      console.log("PHOTO QUERY ERROR " , error)
-      photos.edges = [];
-    }
-    console.log("ID POLL" ,photos.edges.map(a=> a.node.image.uri))
-    for (let i = 0; i < photos.edges.length; i++) {
-
-      let hash = "null" // TODO DO HASHING PROPERLY
-      let res = await mserver.appendIMG(serverUrl , authblob , uID,hash, photos.edges[i].node.image.fileSize , sID)
-
-      let ilstr = await AsyncStorage.getItem("imagelookup")
-      let ImageLookup = JSON.parse(ilstr)
-      ImageLookup[res.image._id] = photos.edges[i]
-      AsyncStorage.setItem("imagelookup", JSON.stringify(ImageLookup) )
-      console.log(JSON.stringify(ImageLookup).toString())
-    }
-    
-    AsyncStorage.setItem("lastts" , (Date.now()+100).toString());
-  }
-
-  useEffect(() => {
-    console.log("ID SET INTERVAL MOUNTED " , isPolling)
-    SetsetIntervalID(BackgroundTimer.setInterval(() => poll(), intrv))
-    //SetsetIntervalID(0)
-  }, [])
-
-  useEffect(() => {
-    if(!isPolling) BackgroundTimer.clearInterval(setIntervalID)
-  } , [isPolling , setIntervalID])
-
-  return null;
-}
-
-function ImageReceiver({ intrv , isPolling}) {
-  if (!intrv) intrv = 30000
-  if (isPolling == null) isPolling = true
-  const serverUrl = useRecoilValue(motherServerAtom)
-  const relayServerUrl = useRecoilValue(relayServerAtom)
-  const relayServerKey = useRecoilValue(relayServerKeyAtom)
-  const keypair = useRecoilValue(keyPairAtom)
-  const sID = useRecoilValue(sessionIDAtom)
-  const uID = useRecoilValue(userIDAtom)
-  const sessionPass = useRecoilValue(sessionPassAtom)
-  const authblob = useRecoilValue(authblobSelector)
-  const [setIntervalID , SetsetIntervalID] = useState(0)
-
-  async function pollIR() {
-    let ilstr = await AsyncStorage.getItem("imagelookup")
-    let ImageLookup = JSON.parse(ilstr)
-    if (!isPolling) return;
-
-    let res = await mserver.sessionMetaData(serverUrl , authblob , uID , sID)
-
-
-    console.log("IR POLL" , JSON.stringify(res.images.map(a=> a._id)).toString())
-    console.log("IMAGE LOOKUP" , Object.keys(ImageLookup))
-    for (let i = 0; i < res.images.length; i++) {
-      if(! ImageLookup[res.images[i]._id]) {
-        await mserver.createPR(serverUrl , authblob, uID , res.images[i].seed[res.images[i].seed.length-1]._id, "UploadImage "+res.images[i]._id , sID)
-        ImageLookup[res.images[i]._id] = "Incomplete Transfer"
-        console.log(`IR POLLER SET ${res.images[i]._id} TO PLACEHOLDER` ,ImageLookup )
-      }
-    }
-
-    AsyncStorage.setItem("imagelookup", JSON.stringify(ImageLookup) )
-  }
-
-  useEffect(() => {
-    console.log("IR SET INTERVAL MOUNTED " , isPolling)
-    SetsetIntervalID(BackgroundTimer.setInterval(pollIR, intrv))
-  }, [])
-
-  useEffect(() => {
-    if(!isPolling) BackgroundTimer.clearInterval(setIntervalID)
-  } , [isPolling , setIntervalID])
-
-  return null;
-}
-
-function RequestHandler({intrv, isPolling}) {
-  const serverUrl = useRecoilValue(motherServerAtom)
-  const relayServerUrl = useRecoilValue(relayServerAtom)
-  const relayServerKey = useRecoilValue(relayServerKeyAtom)
-  const keypair = useRecoilValue(keyPairAtom)
-  const sID = useRecoilValue(sessionIDAtom)
-  const uID = useRecoilValue(userIDAtom)
-  const sessionPass = useRecoilValue(sessionPassAtom)
-  const authblob = useRecoilValue(authblobSelector)
-  if (!intrv) intrv = 30000
-  if (isPolling == null) isPolling = true
-  const [setIntervalID , SetsetIntervalID] = useState(0)
-
-
-  async function pollRH() {
-    let ilstr = await AsyncStorage.getItem("imagelookup")
-    let ImageLookup = JSON.parse(ilstr)
-    if (!isPolling) return;
-    let res = await mserver.sessionMetaData(serverUrl , authblob , uID , sID)
-    console.log("RH POLL" ,res.pending_requests.filter(a=> a.to._id === uID))
-    for (let i = 0; i < res.pending_requests.length; i++) {
-      if(res.pending_requests[i].to._id !== uID) continue;
-      if(res.pending_requests[i].req.split(" ")[0] === "UploadImage") {
-        await mserver.delPR(serverUrl , authblob , uID , res.pending_requests[i]._id , sID)
-        let res2 = await relay.uploadFile(relayServerUrl , ImageLookup[res.pending_requests[i].req.split(" ")[1]]  , sessionPass , relayServerKey , res.pending_requests[i].from.pubkey)
-        console.log("UPLOADED TO ROUTE " + res2.route_id)
-        await mserver.createPR(serverUrl, authblob, uID , res.pending_requests[i].from._id ,  "FetchImage "+res2.route_id+" "+res.pending_requests[i].req.split(" ")[1] , sID)
-
-      }
-      else if(res.pending_requests[i].req.split(" ")[0] === "FetchImage") {
-        await mserver.delPR(serverUrl , authblob , uID , res.pending_requests[i]._id , sID)
-        let savedPhotoFile = await relay.fetchFile(relayServerUrl , sessionPass , relayServerKey ,res.pending_requests[i].req.split(" ")[1])
-        //ImageLookup[res.pending_requests[i].req.split(" ")[2]] = savedPhotoFile
-        ImageLookup[res.pending_requests[i].req.split(" ")[2]] = "COMPLETED TRANSFER" //TODO: image object from camera roll
-        AsyncStorage.setItem("imagelookup", JSON.stringify(ImageLookup))
-        AsyncStorage.setItem("lastts" , (Date.now()+100).toString());
-        try {
-          console.log("MMS REQ " , res.pending_requests[i])
-          await mserver.mms(serverUrl , authblob , uID , res.pending_requests[i].req.split(" ")[2] , sID)
-        }
-        catch(err) {
-          console.log("ERROR UPLOADING PHOTO TO MMS " , err)
-        }
-
-      }
-    }
-  }
-
-  useEffect(() => {
-    console.log("RH SET INTERVAL MOUNTED " , isPolling)
-    SetsetIntervalID(BackgroundTimer.setInterval(pollRH, intrv))
-  }, [])
-
-  useEffect(() => {
-    if(!isPolling) BackgroundTimer.clearInterval(setIntervalID)
-  } , [isPolling , setIntervalID])
-
-  return null;
-}
-
 export default function ListeningScreen(props) {
   const navigation = useNavigation();
 
-  const serverUrl = useRecoilValue(motherServerAtom)
-  const relayServerUrl = useRecoilValue(relayServerAtom)
-  const relayServerKey = useRecoilValue(relayServerKeyAtom)
-  const keypair = useRecoilValue(keyPairAtom)
-  const sID = useRecoilValue(sessionIDAtom)
-  const uID = useRecoilValue(userIDAtom)
-  const sessionPass = useRecoilValue(sessionPassAtom)
-  const authblob = useRecoilValue(authblobSelector)
-
-  const [revealKey, setRevealKey] = useState(false);
-  const [revealKey1, setRevealKey1] = useState(false);
-  const [ServerAlive,SetServerAlive]  = useState(false)
 
   const [isPolling, setIsPolling] = useState(true)
 
@@ -230,19 +23,8 @@ export default function ListeningScreen(props) {
     AsyncStorage.setItem("imagelookup" , "{}");
   } , [])
 
-  const serverAliveChecker = async () => {
-    let t = await relay.isAlive(relayServerUrl,relayServerKey)
-    console.log("SERVER ALIVE CHECKER " , t,relayServerUrl,relayServerKey)
-    SetServerAlive(t.serverStat && t.keyStat)
-  }
 
-  useEffect(()=> {
-    serverAliveChecker()
-    let int = setInterval(serverAliveChecker,25000)
-    return () => clearInterval(int);
-  },[])
-  
-  
+
   const copyToClipboard = (text) => {
     Clipboard.setString(text)
   };
@@ -275,32 +57,14 @@ export default function ListeningScreen(props) {
   },[navigation]);
 
 
-  let logoFromFile = require('../assets/Expose.png');
   return (
     <View style={styles.container} className="bg-white">
       <Text style={styles.header}>Listening</Text>
       <View style={styles.concatbox}>
-        <Text style={styles.texty1} className="">Server Status: {ServerAlive ? "Alive 🟢" : "Unresponsive 🔴"}</Text>
+        <Text style={styles.texty1} className="">Server Status: Alive 🟢</Text>
       </View>
-      <Text style={styles.texty} className="mt-5">Session ID: {sID}</Text>
-      <Text style={styles.texty}>Server URL: {serverUrl}</Text>
-      <Text style={styles.texty}>Relay Server URL: {relayServerUrl}</Text>
-      <TouchableOpacity onPress={() => setRevealKey1(!revealKey1)}>
-        <Text style={styles.texty}>Relay Key: {revealKey1 ? `${relayServerKey} (Tap to Hide)` : '******  (Tap to Reveal)'}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => setRevealKey(!revealKey)}>
-        <Text style={styles.texty}>Session Password: {revealKey ? `${sessionPass} (Tap to Hide)` : '******  (Tap to Reveal)'}</Text>
-      </TouchableOpacity>
-      <View style={styles.concatbox} className = "mt-7">
-        <Text className="mb-2" style={styles.texty2}>Connection String</Text>
-        <View className="flex-row">
-          <TouchableOpacity className="w-auto" onPress={() => copyToClipboard(`${relayServerKey}||${relayServerUrl}||${sID}||${sessionPass}`) }>
-          <Text style={styles.textInput} className="w-auto">{`${relayServerKey}||${relayServerUrl}||${sID}||${sessionPass}`.substring(0,10)+`...(Tap to Copy)`}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Text style={styles.texty} className="mt-5">Session ID: 12414</Text>
       <Text style={styles.texty3}>Go Back to End Listener</Text>
-      <Sync AisPolling={isPolling}/>
     </View>
   );
 }

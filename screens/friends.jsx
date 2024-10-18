@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet } from 'react-native';
 import { TextInput,Button } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 
 const friends = [
   { id: '1', name: 'Friend 1' },
@@ -10,6 +11,8 @@ const friends = [
 
 const FriendsScreen = () => {
   const [sessionCode, setsessionCode] = useState("");
+
+  const navigation = useNavigation();
 
   return (
     <View className="flex-1 bg-white justify-center items-center p-5">
@@ -24,7 +27,7 @@ const FriendsScreen = () => {
           theme={{ colors: { primary: 'black' } }}
 
         />
-        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => console.log('Pressed')}>
+        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
             <Text className="text-black">
             Create Session / Join Session
             </Text>
