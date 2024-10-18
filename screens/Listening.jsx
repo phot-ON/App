@@ -1,32 +1,64 @@
-
-import React, { useState, useEffect , useRef} from 'react';
-import { View, Text, Button, StyleSheet, TouchableOpacity  ,Alert} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
-import BackgroundTimer from 'react-native-background-timer';
+import { Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
-import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRecoilValue, useSetRecoilState , useRecoilState } from 'recoil';
-import {userIDAtom , sessionIDAtom , motherServerAtom, LastTSAtom} from './atoms'
-import RNFS from 'react-native-fs';
+import Modal from "react-native-modal";
+import QRCode from 'react-native-qrcode-svg';
+
+
 //import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 
+function Sync(props) {
+
+  return <>
+  </>
+}
+
+const friends = [
+  { id: '1', name: 'Friend 1' },
+  { id: '2', name: 'Friend 2' },
+  { id: '3', name: 'Friend 3' },
+  { id: '3', name: 'Friend 3' },
+  { id: '3', name: 'Friend 3' },
+  { id: '3', name: 'Friend 3' },
+  { id: '3', name: 'Friend 3' },
+  { id: '3', name: 'Friend 3' },
+  { id: '3', name: 'Friend 3' },
+];
+
+function FriendCard(props) {
+  const [isModalVisible, setModalVisible] = useState(false);
+
+  return (
+    <>
+      <View className="bg-white p-4 rounded-lg shadow-lg border border-yellow-300 mb-5 w-full flex-row justify-between">
+        <Text className="text-black text-lg">
+          {props.name}
+        </Text>
+        <Button icon="send" mode="text" textColor='black' onPress={() => setModalVisible(true)}>
+          Send Invite
+        </Button>
+      </View>
+
+    </>
+  );
+}
+
 export default function ListeningScreen(props) {
   const navigation = useNavigation();
+  const [qrVisible, setQRVisible] = useState(false);
+  const [isPolling, setIsPolling] = useState(true);
 
-
-  const [isPolling, setIsPolling] = useState(true)
-
-  useEffect(() =>{
-    AsyncStorage.setItem("lastts" , Date.now().toString());
-    AsyncStorage.setItem("imagelookup" , "{}");
-  } , [])
-
-
+  useEffect(() => {
+    AsyncStorage.setItem("lastts", Date.now().toString());
+    AsyncStorage.setItem("imagelookup", "{}");
+  }, []);
 
   const copyToClipboard = (text) => {
-    Clipboard.setString(text)
+    Clipboard.setString(text);
   };
 
   useEffect(() => {
@@ -44,28 +76,43 @@ export default function ListeningScreen(props) {
           {
             text: "End Listener",
             onPress: () => {
-              setIsPolling(false)
+              setIsPolling(false);
               navigation.dispatch(e.data.action);
             },
           },
         ],
         { cancelable: true }
       );
-
-  });
-  return unsubscribe
-  },[navigation]);
-
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   return (
-    <View style={styles.container} className="bg-white">
-      <Text style={styles.header}>Listening</Text>
-      <View style={styles.concatbox}>
-        <Text style={styles.texty1} className="">Server Status: Alive 🟢</Text>
+    <>
+      <View style={styles.container} className="bg-white">
+        <Text style={styles.header}>Listening</Text>
+        <Button icon="qrcode" mode="text" textColor='black' onPress={() => setQRVisible(!qrVisible)}>
+          Show QR Code
+        </Button>
+        <View className="bg-white p-4 rounded-lg flex-1 shadow-lg border border-yellow-300 mb-5 w-full">
+          <Text className="text-black text-2xl mb-10">
+            Friends
+          </Text>
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+            {friends.map((a) => <FriendCard key={a.id} {...a} />)}
+          </ScrollView>
+        </View>
+        <Modal isVisible={qrVisible}>
+          <View style={{ flex: 1 }}>
+          <QRCode
+            logoSize={100}
+            value="sessioncode"
+          />
+            
+          </View>
+        </Modal>
       </View>
-      <Text style={styles.texty} className="mt-5">Session ID: 12414</Text>
-      <Text style={styles.texty3}>Go Back to End Listener</Text>
-    </View>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React , {useEffect} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -7,6 +7,7 @@ import {
   Text,
   useColorScheme,
   View,
+  Linking
 } from 'react-native';
 
 import { NavigationContainer } from '@react-navigation/native';
@@ -23,17 +24,44 @@ import {
   ReloadInstructions,
 } from 'react-native/Libraries/NewAppScreen';
 import { PaperProvider } from 'react-native-paper';
-
+import {RecoilRoot} from "recoil";
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from "jwt-decode";
+import { tokenAtom } from './screens/atoms';
 
 
 const Stack = createNativeStackNavigator();
+const linking = {
+  prefixes: ['photon://'],
+  config: {
+      screens: {
+          Friends: 'login/:token',
+      },
+  },
+};
 
 
 
 const App = () => {
+
+
+
+  useEffect(() => {
+      const handleDeepLink = async (url) => {
+          const token = url.split('/').pop();
+          await AsyncStorage.setItem('token', token);
+          const decodedToken = jwtDecode(token);
+          console.log("DECODED JWT FROM DEEP LINK ",decodedToken);
+      };
+      const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+      return () => {
+          subscription.remove();
+      };
+  }, []);
   return (
     <PaperProvider>
-    <NavigationContainer>
+    <RecoilRoot>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator initialRouteName="Landing">
         <Stack.Screen 
           name="Landing" 
@@ -46,6 +74,7 @@ const App = () => {
         options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
+    </RecoilRoot>
     </PaperProvider>
   );
 };
