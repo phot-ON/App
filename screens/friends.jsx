@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet , ScrollView  , Image} from 'react-native';
-import { TextInput,Button } from 'react-native-paper';
+import { TextInput,Button, Modal } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useRecoilState } from 'recoil';
 import {tokenAtom} from './atoms';
@@ -20,6 +20,9 @@ const FriendsScreen = () => {
   const [avatarUrl,setAvatarUrl] = useRecoilState(avatarUrlSelector)
   const [emailAddress,setEmailAddress] = useRecoilState(emailAddressSelector)
   const [name,setName] = useRecoilState(nameSelector)
+
+  const [friendVisible , setFriendVisible] = useState(false);
+  const [friendList , setFriendList] = useState([]);
 
   useEffect(() => {
     const getTokenFromStorage = async () => {
@@ -68,7 +71,30 @@ const FriendsScreen = () => {
             </Text>
         </Button>
       </View>
-
+      <View className="bg-white p-4 rounded-lg shadow-lg border border-yellow-300 mb-5 w-full">
+        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
+            <Text className="text-black">
+              Friend List
+            </Text>
+        </Button>
+        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
+            <Text className="text-black">
+              Add Friend
+            </Text>
+        </Button>
+        <Button icon="qr">
+            <Text className="text-black">
+              Your QR
+            </Text>
+        </Button>
+      </View>
+      <Modal isVisible={friendVisible}>
+        <View className="bg-white mt-20 p-4 rounded-lg flex-1 shadow-lg border border-yellow-300 mb-5 w-full">
+          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+            {friendList.map((a) => <FriendCard key={a.id} {...a} />)}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 };

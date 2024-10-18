@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView  , Linking} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import QRCode from 'react-native-qrcode-svg';
-
-
+import {sessionIDAtom , decodedTokenSelector , nameSelector , emailAddressSelector , avatarUrlSelector} from './atoms';
+import {useRecoilState} from "recoil";
+import { Share } from 'react-native';
 //import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
 
@@ -21,16 +22,18 @@ const friends = [
   { id: '1', name: 'Friend 1' },
   { id: '2', name: 'Friend 2' },
   { id: '3', name: 'Friend 3' },
-  { id: '3', name: 'Friend 3' },
-  { id: '3', name: 'Friend 3' },
-  { id: '3', name: 'Friend 3' },
-  { id: '3', name: 'Friend 3' },
-  { id: '3', name: 'Friend 3' },
-  { id: '3', name: 'Friend 3' },
+  { id: '4', name: 'Friend 3' },
+  { id: '5', name: 'Friend 3' },
+  { id: '6', name: 'Friend 3' },
+  { id: '7', name: 'Friend 3' },
+  { id: '8', name: 'Friend 3' },
+  { id: '9', name: 'Friend 3' },
 ];
 
 function FriendCard(props) {
   const [isModalVisible, setModalVisible] = useState(false);
+
+
 
   return (
     <>
@@ -48,11 +51,30 @@ function FriendCard(props) {
 }
 
 export default function ListeningScreen(props) {
+  const [sID , setSID] = useRecoilState(sessionIDAtom)
+  const [decodedToken , setDecodedToken] = useRecoilState(decodedTokenSelector)
+  const [name , setName] = useRecoilState(nameSelector)
+  const [emailAddress , setEmailAddress] = useRecoilState(emailAddressSelector)
+  const [avatarUrl , setAvatarUrl] = useRecoilState(avatarUrlSelector)
   const navigation = useNavigation();
   const [qrVisible, setQRVisible] = useState(false);
   const [isPolling, setIsPolling] = useState(true);
+  const [inviteLink, setInviteLink] = useState('');
+
+  const shareInviteLink = async () => {
+    if (inviteLink) {
+      try {
+        await Share.share({
+          message: `${name} Invited you to their Photon Session: ${inviteLink}`,
+        });
+      } catch (error) {
+        console.error('Error sharing invite link:', error);
+      }
+    }
+  };
 
   useEffect(() => {
+    setInviteLink(`somerandomshit/${sID}`) //TODO: CHANGE INVITE LINK
     AsyncStorage.setItem("lastts", Date.now().toString());
     AsyncStorage.setItem("imagelookup", "{}");
   }, []);
@@ -87,28 +109,37 @@ export default function ListeningScreen(props) {
     return unsubscribe;
   }, [navigation]);
 
+
   return (
     <>
       <View style={styles.container} className="bg-white">
-        <Text style={styles.header}>Listening</Text>
-        <Button icon="qrcode" mode="text" textColor='black' onPress={() => setQRVisible(!qrVisible)}>
-          Show QR Code
-        </Button>
-        <View className="bg-white p-4 rounded-lg flex-1 shadow-lg border border-yellow-300 mb-5 w-full">
+        <Text style={styles.header}>Synced </Text>
+        <View className="display-flex flex-row mt-5">
+          <Button icon="qrcode" mode="text" textColor='black' onPress={() => setQRVisible(!qrVisible)}>
+            <Text className="text-black text-lg">Show QR Code</Text>
+          </Button>
+          <Button icon="link" mode="text" textColor='black' onPress={shareInviteLink}>
+            <Text className="text-black text-lg">Share Invite Link</Text>
+          </Button>
+        </View>
+
+        <View className="bg-white mt-20 p-4 rounded-lg flex-1 shadow-lg border border-yellow-300 mb-5 w-full">
           <Text className="text-black text-2xl mb-10">
-            Friends
+            Invite Friends
           </Text>
           <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
             {friends.map((a) => <FriendCard key={a.id} {...a} />)}
           </ScrollView>
         </View>
-        <Modal isVisible={qrVisible}>
-          <View style={{ flex: 1 }}>
-          <QRCode
-            logoSize={100}
-            value="sessioncode"
-          />
-            
+        <Modal isVisible={qrVisible} onBackButtonPress={() => setQRVisible(false)}>
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} className="bg-white">
+            <QRCode
+              logoSize={500}
+              value="sessioncode"
+            />
+            <Text style={styles.texty1} className="mt-4 text-black">
+              Press Back to Close QR Code
+            </Text>
           </View>
         </Modal>
       </View>

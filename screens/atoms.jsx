@@ -57,7 +57,6 @@ const decodedTokenSelector = selector({
         try {
             return jwtDecode(token);
         } catch (error) {
-            console.error('Error decoding token:', error);
             return {};
         }
     },
@@ -70,7 +69,6 @@ const nameSelector = selector({
         try {
             return separateName(decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || '')
         } catch (error) {
-            console.error('Error decoding token:', error);
             return '';
         }
     },
@@ -91,15 +89,17 @@ const emailAddressSelector = selector({
 
 const avatarUrlSelector = selector({
     key: 'avatarUrlSelector',
+
     get: ({ get }) => {
         const decodedToken = get(decodedTokenSelector);
         try {
             return decodedToken["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/uri"] || '';
         } catch (error) {
             console.error('Error decoding token:', error);
-            return '';
+            return 'https://media.istockphoto.com/id/1300845620/vector/user-icon-flat-isolated-on-white-background-user-symbol-vector-illustration.jpg?s=612x612&w=0&k=20&c=yBeyba0hUkh14_jgv1OKqIH0CCSWU_4ckRkAoy2p73o=';
         }
     },
 });
 
-module.exports = { avatarUrlSelector , emailAddressSelector , nameSelector ,LastTSAtom, userIDAtom, sessionIDAtom, motherServerAtom, tokenAtom, nameSelector, emailAddressSelector, avatarUrlSelector };
+
+module.exports = { decodedTokenSelector,sessionIDAtom, avatarUrlSelector , emailAddressSelector , nameSelector ,LastTSAtom, userIDAtom, sessionIDAtom, motherServerAtom, tokenAtom, nameSelector, emailAddressSelector, avatarUrlSelector };

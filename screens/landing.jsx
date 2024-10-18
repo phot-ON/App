@@ -1,29 +1,29 @@
 import React , {useState, useEffect} from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Button  , ActivityIndicator,MD2Colors} from 'react-native-paper';
-import Icon from 'react-native-vector-icons/AntDesign';
+import Icon from 'react-native-vector-icons/FontAwesome6';
 import Modal from "react-native-modal";
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 function LoadingCheck(props) {
   const {navigation} = props
-  const [loading, setLoading] = useState(true)
-  useEffect(() => {
-    AsyncStorage.getItem('token').then((token) => {
-      axios.get(`https://db.tail3e2bc4.ts.net/auth/validate?token=${token}`).then((response) => {
-        if (response.status === 200) {
-          navigation.navigate("Friends")
-        }
-        setLoading(false)
-      }).catch((error) => {
-        setLoading(false)
-      })
-    }).catch((error) => {
-      console.error("AsyncStorage error:", error)
-      setLoading(false)
-    })
-  }, [])
+  const [loading, setLoading] = useState(false)
+  // useEffect(() => {
+  //   AsyncStorage.getItem('token').then((token) => {
+  //     axios.get(`https://db.tail3e2bc4.ts.net/auth/validate?token=${token}`).then((response) => {
+  //       if (response.status === 200) {
+  //         navigation.navigate("Friends")
+  //       }
+  //       setLoading(false)
+  //     }).catch((error) => {
+  //       setLoading(false)
+  //     })
+  //   }).catch((error) => {
+  //     console.error("AsyncStorage error:", error)
+  //     setLoading(false)
+  //   })
+  // }, [])
 
   return <>
   <Modal visible={loading} animationType="fade" transparent={true}>
@@ -64,16 +64,24 @@ const LandingScreen = ({ navigation }) => {
 
       <TouchableOpacity
         onPress={() => Linking.openURL('https://db.tail3e2bc4.ts.net/login/github')}
-        className="bg-gray-800 p-2 rounded-lg flex-row items-center shadow-lg h-12"
+        className="bg-gray-800 p-2 rounded-lg flex-row items-center shadow-lg h-12 w-50"
       >
         <Icon name="github" size={24} color="white" style={{ marginRight: 8 }} />
+        <Text className="text-white font-bold text-lg">Login with Github</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => Linking.openURL('https://db.tail3e2bc4.ts.net/login/discord')}
+        className= "p-2 rounded-lg flex-row items-center shadow-lg h-12 mt-2 w-50"
+        style = {{backgroundColor:"#7289DA"}}
+      >
+        <Icon name="discord" size={22} color="white" style={{ marginRight: 8 }} />
         <Text className="text-white font-bold text-lg">Login with Github</Text>
       </TouchableOpacity>
     </View>
     <View style={styles.footer} className="flex justify-between flex-row">
 
         <Text className="text-black mb-2">Made with ❤️ by CB</Text>
-        <TouchableOpacity onPress={() => { /* Link to GitHub */ }}>
+        <TouchableOpacity onPress={() => Linking.openURL("https://github.com/phot-ON")}>
             <Image source={{ uri: 'https://github.githubassets.com/images/modules/logos_page/GitHub-Mark.png' }} style={styles.githubLogo} />
         </TouchableOpacity>
     </View>
