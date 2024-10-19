@@ -9,6 +9,8 @@ import {
   View,
   Linking
 } from 'react-native';
+import messaging from '@react-native-firebase/messaging';
+
 
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -43,6 +45,34 @@ const linking = {
 
 
 const App = () => {
+
+
+
+
+  useEffect(() => {
+
+
+
+
+    async function requestUserPermission() {
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+    
+      if (enabled) {
+        console.log('Authorization status:', authStatus);
+      }
+
+      messaging()
+      .getToken()
+      .then(token => {
+        console.log('FCM Token:', token);
+      });
+    }
+    
+    requestUserPermission();
+  }, []);
 
 
 

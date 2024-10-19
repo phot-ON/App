@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1023155985548",
+    "project_id": "photon-aaf04",
+    "storage_bucket": "photon-aaf04.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1023155985548:android:36716734a0c6cd23bf6fa9",
+        "android_client_info": {
+          "package_name": "com.photon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNe4pS74Ez4Gkrq0LIBQdX_SIKvH61xC8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

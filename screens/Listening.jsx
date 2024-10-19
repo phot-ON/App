@@ -9,12 +9,70 @@ import QRCode from 'react-native-qrcode-svg';
 import {sessionIDAtom , decodedTokenSelector , nameSelector , emailAddressSelector , avatarUrlSelector} from './atoms';
 import {useRecoilState} from "recoil";
 import { Share } from 'react-native';
+import {ImageDBURLAtom} from './atoms';
+import messaging from '@react-native-firebase/messaging';
+
 //import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
+function ImageDispatcher({imageDBurl}) {
+
+  async function poll() {
+    let lastTS =  await AsyncStorage.getItem("lastts")
+    lastTS = Number(lastTS)
+    try {
+      console.log("FETCHING IMAGES AFTER TS: "+lastTS)
+      photos = await CameraRoll.getPhotos({
+        first: 10,
+        assetType: 'Photos',
+        fromTime: lastTS
+      });
+
+    }
+    catch (error) {
+      console.log("PHOTO QUERY ERROR " , error)
+      photos.edges = [];
+    }
+    console.log("ID POLL " ,photos.edges.map(a=> a.node.image.uri))
+    for (let i = 0; i < photos.edges.length; i++) {
+      //TODO: REQUEST TO PHOTON IMAGEDB SERVER
+      //TODO: REQUEST TO AKSHAT SERVER
+    }
+    AsyncStorage.setItem("lastts" , (Date.now()+100).toString());
+  }
+
+
+  return <></>
+}
+
+function ImageReceiver({imageDBurl}) {
+  useEffect(() => {
+    const unsubscribe = messaging().onMessage(async remoteMessage => {
+      //TODO: REQUEST TO PHOTON IMAGEDB SERVER
+      console.log('RECIEVED FCM MESSAGE: ', remoteMessage);
+    });
+    
+    return unsubscribe;
+  }, []);
+
+  // useEffect(() => {
+  //   let unsub = messaging().onMessage(async remoteMessage => {
+  //     PushNotification.localNotification({
+  //       title: remoteMessage.notification.title,
+  //       message: remoteMessage.notification.body,
+  //     });
+  //   });
+  //   return unsub
+  // },[])
+
+  return <></>
+}
+
 
 
 function Sync(props) {
-
   return <>
+    <ImageDispatcher imageDBURL={props.imageDBurl}/>
+    <ImageReceiver imageDBURL={props.imageDBurl} />
   </>
 }
 
@@ -60,6 +118,8 @@ export default function ListeningScreen(props) {
   const [qrVisible, setQRVisible] = useState(false);
   const [isPolling, setIsPolling] = useState(true);
   const [inviteLink, setInviteLink] = useState('');
+  const [imageDBURL, setImageDBURL] = useRecoilState(ImageDBURLAtom);
+  
 
   const shareInviteLink = async () => {
     if (inviteLink) {
@@ -113,7 +173,7 @@ export default function ListeningScreen(props) {
   return (
     <>
       <View style={styles.container} className="bg-white">
-        <Text style={styles.header}>Synced </Text>
+        <Text style={styles.header}>Listening</Text>
         <View className="display-flex flex-row mt-5">
           <Button icon="qrcode" mode="text" textColor='black' onPress={() => setQRVisible(!qrVisible)}>
             <Text className="text-black text-lg">Show QR Code</Text>
@@ -124,7 +184,7 @@ export default function ListeningScreen(props) {
         </View>
 
         <View className="bg-white mt-20 p-4 rounded-lg flex-1 shadow-lg border border-yellow-300 mb-5 w-full">
-          <Text className="text-black text-2xl mb-10">
+          <Text className="text-black text-2xl mb-10 text-center">
             Invite Friends
           </Text>
           <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -142,6 +202,7 @@ export default function ListeningScreen(props) {
             </Text>
           </View>
         </Modal>
+        <Sync imgDBurl = {imageDBURL}/>
       </View>
     </>
   );

@@ -7,7 +7,7 @@ import {tokenAtom} from './atoms';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from "jwt-decode";
 import {nameSelector , avatarUrlSelector , emailAddressSelector} from './atoms';
-
+import Icon from 'react-native-vector-icons/FontAwesome5';
 
 
 
@@ -41,7 +41,7 @@ const FriendsScreen = () => {
   return (
     <View className="flex-1 bg-white justify-center items-center p-5">
       <View>
-        <Text className="text-black text-3xl font-bold mb-5">
+        <Text className="text-black text-3xl font-bold mb-5 text-center">
           Welcome {name}
         </Text>
         <View className="flex items-center mb-5">
@@ -72,17 +72,20 @@ const FriendsScreen = () => {
         </Button>
       </View>
       <View className="bg-white p-4 rounded-lg shadow-lg border border-yellow-300 mb-5 w-full">
-        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
-            <Text className="text-black">
-              Friend List
-            </Text>
-        </Button>
-        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
-            <Text className="text-black">
-              Add Friend
-            </Text>
-        </Button>
-        <Button icon="qr">
+        <View className="display-flex justify-between flex-row items-center mb-5">
+          <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => setFriendVisible(!friendVisible)}>
+              <Icon name="user-friends" className=""></Icon>
+              <Text className="text-black">
+                Friend List
+              </Text>
+          </Button>
+          <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
+              <Text className="text-black">
+                + Add Friend
+              </Text>
+          </Button>
+        </View>
+        <Button icon="qrcode" iconColor="black">
             <Text className="text-black">
               Your QR
             </Text>

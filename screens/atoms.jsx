@@ -11,7 +11,7 @@ import {
 function separateName(name) {
     let output = name[0];
     for (let i = 1; i < name.length; i++) {
-      if (name[i] === name[i].toUpperCase()) {
+      if (name[i].match(/[a-zA-Z]/) && name[i] === name[i].toUpperCase()) {
         output += ' ' + name[i];
       } else {
         output += name[i];
@@ -62,6 +62,11 @@ const decodedTokenSelector = selector({
     },
 });
 
+const ImageDBURLAtom = atom({
+    key: 'ImageDB',
+    default: "",
+})
+
 const nameSelector = selector({
     key: 'nameSelector',
     get: ({ get }) => {
@@ -102,4 +107,4 @@ const avatarUrlSelector = selector({
 });
 
 
-module.exports = { decodedTokenSelector,sessionIDAtom, avatarUrlSelector , emailAddressSelector , nameSelector ,LastTSAtom, userIDAtom, sessionIDAtom, motherServerAtom, tokenAtom, nameSelector, emailAddressSelector, avatarUrlSelector };
+module.exports = {ImageDBURLAtom ,decodedTokenSelector,sessionIDAtom, avatarUrlSelector , emailAddressSelector , nameSelector ,LastTSAtom, userIDAtom, sessionIDAtom, motherServerAtom, tokenAtom, nameSelector, emailAddressSelector, avatarUrlSelector };
