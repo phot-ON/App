@@ -40,7 +40,7 @@ const LastTSAtom = atom({
 
 const motherServerAtom = atom({
     key: 'motherServerAtom',
-    default: "",
+    default: "https://db.tail3e2bc4.ts.net",
 
 })
 
@@ -63,8 +63,8 @@ const decodedTokenSelector = selector({
 });
 
 const ImageDBURLAtom = atom({
-    key: 'ImageDB',
-    default: "",
+    key: 'ImageDBURLAtom',
+    default: "https://photon.garvit.tech/images",
 })
 
 const nameSelector = selector({

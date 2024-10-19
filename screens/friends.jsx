@@ -3,23 +3,23 @@ import { View, Text, FlatList, StyleSheet , ScrollView  , Image} from 'react-nat
 import { TextInput,Button, Modal } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useRecoilState } from 'recoil';
-import {tokenAtom} from './atoms';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from "jwt-decode";
-import {nameSelector , avatarUrlSelector , emailAddressSelector} from './atoms';
+import {nameSelector , avatarUrlSelector , emailAddressSelector , sessionIDAtom , motherServerAtom , tokenAtom} from './atoms';
 import Icon from 'react-native-vector-icons/FontAwesome5';
-
-
+import OpenAPIClientAxios from 'openapi-client-axios';
+import axios from "axios"
 
 const FriendsScreen = () => {
-  const [sessionCode, setsessionCode] = useState("");
-
+  const [apiState,setApiState] = useState(null)
 
   const navigation = useNavigation();
   const [token,setToken] = useRecoilState(tokenAtom)
   const [avatarUrl,setAvatarUrl] = useRecoilState(avatarUrlSelector)
   const [emailAddress,setEmailAddress] = useRecoilState(emailAddressSelector)
   const [name,setName] = useRecoilState(nameSelector)
+  const [sid,setsid] = useRecoilState(sessionIDAtom)
+  const [motherServerURL,setMotherServerURL] = useRecoilState(motherServerAtom)
 
   const [friendVisible , setFriendVisible] = useState(false);
   const [friendList , setFriendList] = useState([]);
@@ -36,7 +36,23 @@ const FriendsScreen = () => {
       }
     };
     getTokenFromStorage();
-  })
+  },[setApiState])
+
+  function handleSessionPress(){
+    if(!sid) {
+      axios.post(motherServerURL+"/create",{},{"headers": {"Authorization" : token}}).then((result) => {
+        setsid(result.data.sessionID)
+        navigation.navigate('Listening');
+      }).catch((err) => {
+        console.log("Error in creating session ",err)
+      });
+    }
+    else {
+      axios.post(motherServerURL+"/join",{"sessionID": sid},{"headers":{"Authorization" : token}}).then((result) => {
+        navigation.navigate("Listening");
+      })
+    }
+  }
 
   return (
     <View className="flex-1 bg-white justify-center items-center p-5">
@@ -57,15 +73,15 @@ const FriendsScreen = () => {
       <View className="bg-white p-4 rounded-lg shadow-lg border border-yellow-300 mb-5 w-full">
         <TextInput
           label={<Text style={{ color: 'black' }}>Session Code</Text>}
-          value={sessionCode}
+          value={sid}
           className="bg-white mb-3"
           activeUnderlineColor='#000000'
           mode='outlined'
-          onChangeText={text => setsessionCode(text)}
+          onChangeText={text => setsid(text)}
           theme={{ colors: { primary: 'black' } }}
           autoFocus={true}
         />
-        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
+        <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => handleSessionPress()}>
             <Text className="text-black">
             Create Session / Join Session
             </Text>

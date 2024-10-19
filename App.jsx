@@ -1,4 +1,4 @@
-import React , {useEffect} from 'react';
+import React , {useEffect, useState} from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -18,6 +18,7 @@ import LandingScreen from './screens/landing';
 import FriendsScreen from './screens/friends';
 import ListeningScreen from './screens/Listening';
 
+
 import {
   Colors,
   DebugInstructions,
@@ -29,7 +30,6 @@ import { PaperProvider } from 'react-native-paper';
 import {RecoilRoot} from "recoil";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { jwtDecode } from "jwt-decode";
-import { tokenAtom } from './screens/atoms';
 
 
 const Stack = createNativeStackNavigator();
@@ -46,7 +46,7 @@ const linking = {
 
 const App = () => {
 
-
+  const [apiState,setApiState] = useState();
 
 
   useEffect(() => {
@@ -64,11 +64,6 @@ const App = () => {
         console.log('Authorization status:', authStatus);
       }
 
-      messaging()
-      .getToken()
-      .then(token => {
-        console.log('FCM Token:', token);
-      });
     }
     
     requestUserPermission();
@@ -81,6 +76,7 @@ const App = () => {
           const token = url.split('/').pop();
           await AsyncStorage.setItem('token', token);
           const decodedToken = jwtDecode(token);
+          console.log("ORIGINAL JWT " , token)
           console.log("DECODED JWT FROM DEEP LINK ",decodedToken);
       };
       const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));

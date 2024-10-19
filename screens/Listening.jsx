@@ -6,15 +6,60 @@ import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Modal from "react-native-modal";
 import QRCode from 'react-native-qrcode-svg';
-import {sessionIDAtom , decodedTokenSelector , nameSelector , emailAddressSelector , avatarUrlSelector} from './atoms';
-import {useRecoilState} from "recoil";
-import { Share } from 'react-native';
-import {ImageDBURLAtom} from './atoms';
-import messaging from '@react-native-firebase/messaging';
+import BackgroundTimer from 'react-native-background-timer';
+import { CameraRoll } from '@react-native-camera-roll/camera-roll';
+import {sessionIDAtom , decodedTokenSelector , tokenAtom,nameSelector , emailAddressSelector , avatarUrlSelector} from './atoms';
+import {useRecoilState, useRecoilStateLoadable, useRecoilValue} from "recoil";
+import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
+import { Share } from 'react-native';
+import {ImageDBURLAtom, motherServerAtom} from './atoms';
+import messaging, { requestPermission } from '@react-native-firebase/messaging';
+import OpenAPIClientAxios from 'openapi-client-axios';
+import {fetchFile, uploadFile} from './tunnel'
+import axios from "axios"
 //import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-function ImageDispatcher({imageDBurl}) {
+function ImageDispatcher({imageDBURL,authtoken,sID}) {
+  console.log("DURING ID " , imageDBURL)
+  let motherServerUrl = useRecoilValue(motherServerAtom)
+
+  const requestPermissions = async () => {
+    try {
+        // Request camera permission
+        const cameraResult = await request(PERMISSIONS.ANDROID.CAMERA); // Use PERMISSIONS.IOS.CAMERA for iOS
+        handlePermissionResult(cameraResult, 'Camera');
+
+        // Request storage permission
+        const storageResult = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE); // Use PERMISSIONS.IOS.PHOTO_LIBRARY for iOS
+        handlePermissionResult(storageResult, 'Storage');
+    } catch (error) {
+        console.error('Permission request error:', error);
+    }
+  };
+  useEffect(()=> {
+    requestPermissions()
+  })
+  const handlePermissionResult = (result, permissionType) => {
+    switch (result) {
+        case RESULTS.GRANTED:
+            console.log(`${permissionType} permission granted`);
+            break;
+        case RESULTS.DENIED:
+            console.log(`${permissionType} permission denied`);
+            break;
+        case RESULTS.BLOCKED:
+            Alert.alert(
+                `${permissionType} Permission Blocked`,
+                `You need to enable ${permissionType} permission in settings.`,
+                [{ text: 'OK' }]
+            );
+            break;
+        default:
+            break;
+    }
+  };
+
 
   async function poll() {
     let lastTS =  await AsyncStorage.getItem("lastts")
@@ -35,18 +80,51 @@ function ImageDispatcher({imageDBurl}) {
     console.log("ID POLL " ,photos.edges.map(a=> a.node.image.uri))
     for (let i = 0; i < photos.edges.length; i++) {
       //TODO: REQUEST TO PHOTON IMAGEDB SERVER
-      //TODO: REQUEST TO AKSHAT SERVER
+      let resp =null
+      try {
+        resp = await uploadFile(imageDBURL,photos.edges[i],sID,authtoken)
+
+      }
+      catch(err) {
+        console.log(err)
+      }
+
+      let imageid = resp.hash
+      console.log(motherServerUrl+"/upload" ,authtoken)
+      try{
+        await axios.post(motherServerUrl+"/upload", {"imageID": imageid , "sessionID" : sID}, {
+          headers: {
+            'Authorization': authtoken
+          }
+        })
+        console.log("Updated Main Server about file upload")
+      }
+      catch(err) {
+        console.log(err)
+      }
+
+      //client.upload_upload_post(null,{"imageID" : imageid , "sessionID" : sID},{"Authorization" : authtoken})
+
+
     }
     AsyncStorage.setItem("lastts" , (Date.now()+100).toString());
   }
 
 
+  useEffect(() => {
+    const interval = BackgroundTimer.setInterval(() => {
+      poll();
+    }, 5000);
+    return () => BackgroundTimer.clearInterval(interval);
+  }, []);
+
+
   return <></>
 }
 
-function ImageReceiver({imageDBurl}) {
+function ImageReceiver({imageDBURL,authtoken,sID}) {
   useEffect(() => {
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
+    const unsubscribe = messaging().setBackgroundMessageHandler(async remoteMessage => {
       //TODO: REQUEST TO PHOTON IMAGEDB SERVER
       console.log('RECIEVED FCM MESSAGE: ', remoteMessage);
     });
@@ -54,15 +132,6 @@ function ImageReceiver({imageDBurl}) {
     return unsubscribe;
   }, []);
 
-  // useEffect(() => {
-  //   let unsub = messaging().onMessage(async remoteMessage => {
-  //     PushNotification.localNotification({
-  //       title: remoteMessage.notification.title,
-  //       message: remoteMessage.notification.body,
-  //     });
-  //   });
-  //   return unsub
-  // },[])
 
   return <></>
 }
@@ -71,8 +140,8 @@ function ImageReceiver({imageDBurl}) {
 
 function Sync(props) {
   return <>
-    <ImageDispatcher imageDBURL={props.imageDBurl}/>
-    <ImageReceiver imageDBURL={props.imageDBurl} />
+    <ImageDispatcher imageDBURL={props.imageDBurl} authtoken={props.authtoken} sID={props.sID}/>
+    <ImageReceiver imageDBURL={props.imageDBurl} authtoken={props.authtoken} sID={props.sID}/>
   </>
 }
 
@@ -111,6 +180,7 @@ function FriendCard(props) {
 export default function ListeningScreen(props) {
   const [sID , setSID] = useRecoilState(sessionIDAtom)
   const [decodedToken , setDecodedToken] = useRecoilState(decodedTokenSelector)
+  const [authtoken , setToken] = useRecoilState(tokenAtom)
   const [name , setName] = useRecoilState(nameSelector)
   const [emailAddress , setEmailAddress] = useRecoilState(emailAddressSelector)
   const [avatarUrl , setAvatarUrl] = useRecoilState(avatarUrlSelector)
@@ -118,14 +188,14 @@ export default function ListeningScreen(props) {
   const [qrVisible, setQRVisible] = useState(false);
   const [isPolling, setIsPolling] = useState(true);
   const [inviteLink, setInviteLink] = useState('');
-  const [imageDBURL, setImageDBURL] = useRecoilState(ImageDBURLAtom);
-  
+  const [imageDBURL, setImageDBURL] = useRecoilStateLoadable(ImageDBURLAtom);
+  const [apiState,setApiState] = useState(null)
 
   const shareInviteLink = async () => {
     if (inviteLink) {
       try {
         await Share.share({
-          message: `${name} Invited you to their Photon Session: ${inviteLink}`,
+          message: `${name} Invited you to their Phot.ON Session: ${inviteLink}`,
         });
       } catch (error) {
         console.error('Error sharing invite link:', error);
@@ -158,7 +228,7 @@ export default function ListeningScreen(props) {
           {
             text: "End Listener",
             onPress: () => {
-              setIsPolling(false);
+
               navigation.dispatch(e.data.action);
             },
           },
@@ -202,7 +272,7 @@ export default function ListeningScreen(props) {
             </Text>
           </View>
         </Modal>
-        <Sync imgDBurl = {imageDBURL}/>
+        <Sync imgDBurl = {imageDBURL} authtoken = {authtoken} sID = {sID}/>
       </View>
     </>
   );

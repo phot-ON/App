@@ -6,12 +6,15 @@ import Modal from "react-native-modal";
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRecoilValue } from 'recoil';
-import {ImageDBURLAtom} from './atoms';
-
+import {ImageDBURLAtom , motherServerAtom} from './atoms';
+import { tokenAtom } from './atoms';
+import { useRecoilState } from 'recoil';
+import messaging from '@react-native-firebase/messaging';
 
 function LoadingCheck(props) {
   const {navigation} = props
   const [loading, setLoading] = useState(true)
+
   useEffect(() => {
     AsyncStorage.getItem('token').then((token) => {
       axios.get(`https://db.tail3e2bc4.ts.net/auth/validate?token=${token}`).then((response) => {
@@ -59,7 +62,35 @@ function LoadingCheck(props) {
 }
 
 const LandingScreen = ({ navigation }) => {
+  const [authtoken,setAuthToken] = useRecoilState(tokenAtom);
+  const [apiState,setApiState] = useState(null)
+  const [motherServerUrl , setMotherServerUrl] = useRecoilState(motherServerAtom)
 
+  useEffect(() => {
+    messaging()
+    .getToken()
+    .then(async (token) => {
+
+      axios.post(motherServerUrl+"/FCM", {"FCMtoken": token}, {
+        headers: {
+          'Authorization': authtoken
+        }
+      }).then(a=>console.log("FCM REQUEST DONE"))
+
+      console.log('FCM Token:', token);
+    });
+    messaging().onTokenRefresh(async (token) => {
+      console.log('New FCM Token:', token);
+
+      axios.post(motherServerUrl+"/FCM", {"FCMtoken": token}, {
+        headers: {
+          'Authorization': authtoken
+        }
+      })
+
+
+    });
+  },[authtoken,setApiState])
 
   return (
     <View className="flex-1 bg-white" style={styles.container}>
