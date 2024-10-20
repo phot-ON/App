@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, ScrollView  , Linking} from 'react-native';
+import { View, Text, StyleSheet, Alert, ScrollView, Platform, Linking} from 'react-native';
 import Clipboard from '@react-native-clipboard/clipboard';
 import { Button } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
@@ -31,7 +31,7 @@ function ImageDispatcher({imageDBURL,authtoken,sID}) {
         handlePermissionResult(cameraResult, 'Camera');
 
         // Request storage permission
-        const storageResult = await request(PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE); // Use PERMISSIONS.IOS.PHOTO_LIBRARY for iOS
+        const storageResult = await request(Platform.Version >= 33 ? PERMISSIONS.ANDROID.READ_MEDIA_IMAGES : PERMISSIONS.ANDROID.READ_EXTERNAL_STORAGE); // Use PERMISSIONS.IOS.PHOTO_LIBRARY for iOS
         handlePermissionResult(storageResult, 'Storage');
     } catch (error) {
         console.error('Permission request error:', error);
@@ -77,6 +77,7 @@ function ImageDispatcher({imageDBURL,authtoken,sID}) {
       console.log("PHOTO QUERY ERROR " , error)
       photos.edges = [];
     }
+    console.log("PHOTOS " , photos.length)
     console.log("ID POLL " ,photos.edges.map(a=> a.node.image.uri))
     for (let i = 0; i < photos.edges.length; i++) {
       //TODO: REQUEST TO PHOTON IMAGEDB SERVER
@@ -114,7 +115,7 @@ function ImageDispatcher({imageDBURL,authtoken,sID}) {
   useEffect(() => {
     const interval = BackgroundTimer.setInterval(() => {
       poll();
-    }, 5000);
+    }, 10000);
     return () => BackgroundTimer.clearInterval(interval);
   }, []);
 
@@ -127,9 +128,19 @@ function ImageReceiver({imageDBURL,authtoken,sID}) {
     const unsubscribe = messaging().setBackgroundMessageHandler(async remoteMessage => {
       //TODO: REQUEST TO PHOTON IMAGEDB SERVER
       console.log('RECIEVED FCM MESSAGE: ', remoteMessage);
+      let imageid = remoteMessage.data.imageID
+      fetchFile("blah",imageid,sID,authtoken)
+    });
+    const unsubscribe2 = messaging().onMessage(async remoteMessage => {
+      //TODO: REQUEST TO PHOTON IMAGEDB SERVER
+      console.log('RECIEVED FCM MESSAGE: ', remoteMessage);
+      let imageid = remoteMessage.data.imageID
+      fetchFile("blah",imageid,sID,authtoken)
     });
     
-    return unsubscribe;
+    return () => {
+      unsubscribe2();
+    };
   }, []);
 
 
@@ -145,30 +156,19 @@ function Sync(props) {
   </>
 }
 
-const friends = [
-  { id: '1', name: 'Friend 1' },
-  { id: '2', name: 'Friend 2' },
-  { id: '3', name: 'Friend 3' },
-  { id: '4', name: 'Friend 3' },
-  { id: '5', name: 'Friend 3' },
-  { id: '6', name: 'Friend 3' },
-  { id: '7', name: 'Friend 3' },
-  { id: '8', name: 'Friend 3' },
-  { id: '9', name: 'Friend 3' },
-];
 
-function FriendCard(props) {
-  const [isModalVisible, setModalVisible] = useState(false);
-
-
+function FriendCard({inp,authtoken,sid}) {
 
   return (
     <>
       <View className="bg-white p-4 rounded-lg shadow-lg border border-yellow-300 mb-5 w-full flex-row justify-between">
         <Text className="text-black text-lg">
-          {props.name}
+          {inp}
         </Text>
-        <Button icon="send" mode="text" textColor='black' onPress={() => setModalVisible(true)}>
+        <Button icon="send" mode="text" textColor='black' onPress={() => {
+          console.log("SEND INVITE PRESSED " , inp,sid,authtoken)
+          axios.post("https://photon.garvit.tech/invite",{"username" : inp , "SessionID" : sid} ,  { headers: { Authorization: authtoken } })
+        }} >
           Send Invite
         </Button>
       </View>
@@ -190,6 +190,20 @@ export default function ListeningScreen(props) {
   const [inviteLink, setInviteLink] = useState('');
   const [imageDBURL, setImageDBURL] = useRecoilStateLoadable(ImageDBURLAtom);
   const [apiState,setApiState] = useState(null)
+  const [motherServerURL, setMotherServerUrl] = useRecoilState(motherServerAtom)
+
+  const [friendList, SetFriendList] = useState([])
+  useEffect(() => {
+    async function fetchfriends(){
+      let resp = await axios.get(`${motherServerURL}/friend`, { headers: { Authorization: authtoken } })
+
+      SetFriendList(resp.data.users)
+      console.log("Friends ",resp.data.users)
+
+    }
+    fetchfriends()
+
+  } , [SetFriendList])
 
   const shareInviteLink = async () => {
     if (inviteLink) {
@@ -204,7 +218,7 @@ export default function ListeningScreen(props) {
   };
 
   useEffect(() => {
-    setInviteLink(`somerandomshit/${sID}`) //TODO: CHANGE INVITE LINK
+    setInviteLink(`${motherServerURL}/invite?sessionID=${sID}`) //TODO: CHANGE INVITE LINK
     AsyncStorage.setItem("lastts", Date.now().toString());
     AsyncStorage.setItem("imagelookup", "{}");
   }, []);
@@ -243,7 +257,7 @@ export default function ListeningScreen(props) {
   return (
     <>
       <View style={styles.container} className="bg-white">
-        <Text style={styles.header}>Listening</Text>
+        <Text style={styles.header} className="mt-10">Session ID: {sID.slice(0,3)}...</Text>
         <View className="display-flex flex-row mt-5">
           <Button icon="qrcode" mode="text" textColor='black' onPress={() => setQRVisible(!qrVisible)}>
             <Text className="text-black text-lg">Show QR Code</Text>
@@ -258,14 +272,15 @@ export default function ListeningScreen(props) {
             Invite Friends
           </Text>
           <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-            {friends.map((a) => <FriendCard key={a.id} {...a} />)}
+            {friendList.length == 0 ? <Text className="text-black text-center">You Have No Friends 🤣</Text>  : friendList.map((a) => <FriendCard inp={a} authtoken={authtoken} sid={sID} />)}
           </ScrollView>
         </View>
         <Modal isVisible={qrVisible} onBackButtonPress={() => setQRVisible(false)}>
           <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }} className="bg-white">
             <QRCode
               logoSize={500}
-              value="sessioncode"
+              value={inviteLink}
+              size={300}
             />
             <Text style={styles.texty1} className="mt-4 text-black">
               Press Back to Close QR Code

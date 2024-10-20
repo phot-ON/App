@@ -40,7 +40,7 @@ const LastTSAtom = atom({
 
 const motherServerAtom = atom({
     key: 'motherServerAtom',
-    default: "https://db.tail3e2bc4.ts.net",
+    default: "https://photon.garvit.tech",
 
 })
 

@@ -10,6 +10,8 @@ import {ImageDBURLAtom , motherServerAtom} from './atoms';
 import { tokenAtom } from './atoms';
 import { useRecoilState } from 'recoil';
 import messaging from '@react-native-firebase/messaging';
+import { check, PERMISSIONS, RESULTS } from 'react-native-permissions';
+
 
 function LoadingCheck(props) {
   const {navigation} = props
@@ -17,7 +19,7 @@ function LoadingCheck(props) {
 
   useEffect(() => {
     AsyncStorage.getItem('token').then((token) => {
-      axios.get(`https://db.tail3e2bc4.ts.net/auth/validate?token=${token}`).then((response) => {
+      axios.get(`https://photon.garvit.tech?token=${token}`).then((response) => {
         if (response.status === 200) {
           navigation.navigate("Friends")
         }
@@ -32,6 +34,7 @@ function LoadingCheck(props) {
   }, [])
 
   return <>
+  
   <Modal visible={loading} animationType="fade" transparent={true}>
     <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0, 0, 0, 0.5)'}}>
       <View style={{
@@ -66,6 +69,9 @@ const LandingScreen = ({ navigation }) => {
   const [apiState,setApiState] = useState(null)
   const [motherServerUrl , setMotherServerUrl] = useRecoilState(motherServerAtom)
 
+
+
+
   useEffect(() => {
     messaging()
     .getToken()
@@ -93,19 +99,20 @@ const LandingScreen = ({ navigation }) => {
   },[authtoken,setApiState])
 
   return (
-    <View className="flex-1 bg-white" style={styles.container}>
+    <View className="flex-1 bg-white" style={styles.container}>    
     <Image source={{ uri: 'https://your-logo-url.com/logo.png' }} style={styles.logo} />   
-    <View className="flex-1 justify-center items-center h-20">
+    <View className="flex-1 justify-center items-center h-20 mb-40">
+    <Image source={require('../assets/logo-color.png')} style={styles.logo} />
 
       <TouchableOpacity
-        onPress={() => Linking.openURL('https://db.tail3e2bc4.ts.net/login/github')}
+        onPress={() => Linking.openURL('https://photon.garvit.tech/login/github')}
         className="bg-gray-800 p-2 rounded-lg flex-row items-center shadow-lg h-12 w-[90%]"
       >
         <Icon name="github" size={24} color="white" style={{ marginRight: 8 }} />
         <Text className="text-white font-bold text-lg">Login with Github</Text>
       </TouchableOpacity>
       <TouchableOpacity
-        onPress={() => Linking.openURL('https://db.tail3e2bc4.ts.net/login/discord')}
+        onPress={() => Linking.openURL('https://photon.garvit.tech/login/discord')}
         className= "p-2 rounded-lg flex-row items-center shadow-lg h-12 mt-2 w-[70%]"
         style = {{backgroundColor:"#7289DA"}}
       >
@@ -134,7 +141,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 150,
+    width: 300,
     height: 150,
     marginBottom: 20,
   },
@@ -142,6 +149,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     alignItems: 'center',
+    justifyContent: 'center', // Added to center vertically
   },
   githubLogo: {
     width: 30,

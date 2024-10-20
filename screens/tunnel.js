@@ -3,7 +3,8 @@ import RNFS from 'react-native-fs';
 import base64 from 'base64-js';
 import {
   Alert,
-  PermissionsAndroid
+  PermissionsAndroid,
+  Platform
 } from 'react-native';
 import { CameraRoll } from '@react-native-camera-roll/camera-roll';
 import BackgroundTimer from 'react-native-background-timer';
@@ -11,16 +12,25 @@ import BackgroundTimer from 'react-native-background-timer';
 
 const uploadFile = async (serverUrl,photo,sessionID,auth) => {
     console.log("PHOTO OBJECT TO BE UPLOADED: ",photo)
-    const granted = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE,
-        {
-          title: 'Storage Permission',
-          message: 'This app needs access to your storage to download files.',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        }
+    console.log(Platform.OS, Platform.Version)
+    // Updated permission request for Android 14
+    try {
+    const imagePermission = await PermissionsAndroid.request(
+      Platform.Version >= 33 ? PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES : PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+      {
+        title: "Access Media",
+        message: "We need access to your media files",
+        buttonPositive: "OK",
+      }
     );
+    if (imagePermission === PermissionsAndroid.RESULTS.GRANTED) {
+      console.log("fuck yeah go persm")
+    }else{
+      console.log("gayu")
+    }
+  } catch (err) {
+    console.log(err);
+  }
     serverUrl = "https://photon.garvit.tech"
     const uri = photo.node.image.uri;
     const filename = "test.jpg";
@@ -51,10 +61,9 @@ const uploadFile = async (serverUrl,photo,sessionID,auth) => {
  }
 
 
-const fetchFile = async (s,sessionID,auth) => {
-    const [serverUrl , setserverUrl] = useRecoilState(ImageDBURLAtom)
-
-    const url = `${serverUrl}/images/${sessionID}`;
+const fetchFile = async (s,imageID,sessionID,auth) => {
+    serverUrl = 'https://photon.garvit.tech'
+    const url = `${serverUrl}/images/${sessionID}/${imageID}`;
     console.log(`Request URL: ${url}`);
     try {
       const response = await axios.get(url, {responseType: 'arraybuffer', headers: {'Authorization': auth}});
@@ -96,9 +105,11 @@ const fetchFile = async (s,sessionID,auth) => {
         }
       );
 
-      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+      if (granted === PermissionsAndroid.RESULTS.GRANTED || true) {
         const base64Data = base64.fromByteArray(new Uint8Array(response.data));
         await RNFS.writeFile(path, base64Data, 'base64');
+
+        console.log(`Temp File saved to: ${path}`);
         CameraRoll.saveAsset(`file://${path}`,{album:"Camera"}).then(onfulfilled => console.log(onfulfilled))
         //Alert.alert('Success', `File successfully downloaded to ${path}`);
       } else {

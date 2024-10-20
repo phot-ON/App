@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet , ScrollView  , Image} from 'react-native';
+import { View, Text, FlatList, StyleSheet , ScrollView  , Image , Linking,PermissionsAndroid, Platform} from 'react-native';
 import { TextInput,Button, Modal } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { useRecoilState } from 'recoil';
@@ -9,6 +9,48 @@ import {nameSelector , avatarUrlSelector , emailAddressSelector , sessionIDAtom 
 import Icon from 'react-native-vector-icons/FontAwesome5';
 import OpenAPIClientAxios from 'openapi-client-axios';
 import axios from "axios"
+
+
+
+async function requestStoragePermission() {
+  try {
+    if (Platform.OS === 'android') {
+      if (Platform.Version >= 33) {
+        // For Android 13+ (API 33+), request media-specific permissions.
+        const permissions = [
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_VIDEO,
+          PermissionsAndroid.PERMISSIONS.READ_MEDIA_AUDIO,
+        ];
+
+        const granted = await PermissionsAndroid.requestMultiple(permissions);
+
+        if (
+          granted['android.permission.READ_MEDIA_IMAGES'] === PermissionsAndroid.RESULTS.GRANTED &&
+          granted['android.permission.READ_MEDIA_VIDEO'] === PermissionsAndroid.RESULTS.GRANTED &&
+          granted['android.permission.READ_MEDIA_AUDIO'] === PermissionsAndroid.RESULTS.GRANTED
+        ) {
+          console.log('Media permissions granted');
+        } else {
+          console.log('Media permissions denied');
+        }
+      } else {
+        // For Android versions below 13, use the older READ_EXTERNAL_STORAGE permission.
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
+        );
+
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Storage permission granted');
+        } else {
+          console.log('Storage permission denied');
+        }
+      }
+    }
+  } catch (err) {
+    console.warn(err);
+  }
+}
 
 const FriendsScreen = () => {
   const [apiState,setApiState] = useState(null)
@@ -22,9 +64,41 @@ const FriendsScreen = () => {
   const [motherServerURL,setMotherServerURL] = useRecoilState(motherServerAtom)
 
   const [friendVisible , setFriendVisible] = useState(false);
-  const [friendList , setFriendList] = useState([]);
+  const [friendList , SetFriendList] = useState([]);
+  const [isModalVisible , setModalVisible] = useState(false);
+  const [friendEmail , setFriendEmail] = useState('');
+
 
   useEffect(() => {
+    requestStoragePermission();
+    async function fetchfriends(){
+      let resp = await axios.get(`${motherServerURL}/friend`, { headers: { Authorization: token } })
+      
+      SetFriendList(resp.data.users)
+      console.log("Friends ",resp.data.users)
+
+    }
+    fetchfriends()
+
+  } , [SetFriendList])
+
+  useEffect(() => {
+    const handleDeepLink = async (url) => {
+        if (url.includes('joinSession')) {
+            let sid = url.split('/').pop();
+            await axios.post(motherServerURL+"/join",{"sessionID": sid},{"headers":{"Authorization" : token}})
+            setsid(sid);
+            navigation.navigate('Listening');
+        }
+    };
+    const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    return () => {
+        subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+
     const getTokenFromStorage = async () => {
       try {
         const storedToken = await AsyncStorage.getItem('token');
@@ -88,32 +162,37 @@ const FriendsScreen = () => {
         </Button>
       </View>
       <View className="bg-white p-4 rounded-lg shadow-lg border border-yellow-300 mb-5 w-full">
-        <View className="display-flex justify-between flex-row items-center mb-5">
-          <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => setFriendVisible(!friendVisible)}>
-              <Icon name="user-friends" className=""></Icon>
-              <Text className="text-black">
-                Friend List
-              </Text>
-          </Button>
-          <Button icon="" buttonColor='white' className="rounded-sm shadow-yellow" rippleColor={"#FFF176"} mode="elevated" onPress={() => navigation.navigate("Listening")}>
-              <Text className="text-black">
-                + Add Friend
-              </Text>
-          </Button>
+        <Text className="text-black text-xl font-bold mb-3 text-center">
+          Friends
+        </Text>
+        <View className="flex flex-row justify-center items-center mb-5">
+          <TextInput mode="outlined" placeholder='Add Email' className="h-10" value={friendEmail} onChangeText={text => setFriendEmail(text)} style={{ backgroundColor: 'white', color: 'black' }} />
+          <Button icon="plus" textColor='black' mode="" className="" onPress={() => {
+            axios.post(motherServerURL+"/friend",{"username": friendEmail},{"headers": {"Authorization" : token}}).then((result) => {
+              console.log("FRIEND APPEND RESULT",result.data)
+              if(result.data == "SUCCESS"){
+                SetFriendList([...friendList,friendEmail])
+              }
+              
+            }).catch((err) => {
+              console.log("Error in adding friend ",err)
+            });
+          }}></Button>
         </View>
-        <Button icon="qrcode" iconColor="black">
-            <Text className="text-black">
-              Your QR
-            </Text>
-        </Button>
+
+
+
+
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+            <FlatList
+              data={friendList}
+              renderItem={({ item }) => <Text className="text-black text-center">{item}</Text>}
+              keyExtractor={(item, index) => index.toString()}
+              ListEmptyComponent={<Text className="text-black text-center">You Have No Friends 🤣</Text>}
+            />
+      </ScrollView>
       </View>
-      <Modal isVisible={friendVisible}>
-        <View className="bg-white mt-20 p-4 rounded-lg flex-1 shadow-lg border border-yellow-300 mb-5 w-full">
-          <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-            {friendList.map((a) => <FriendCard key={a.id} {...a} />)}
-          </ScrollView>
-        </View>
-      </Modal>
+
     </View>
   );
 };

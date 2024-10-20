@@ -38,6 +38,7 @@ const linking = {
   config: {
       screens: {
           Friends: 'login/:token',
+          Listening : "joinSession/:sid"
       },
   },
 };
@@ -72,22 +73,22 @@ const App = () => {
 
 
   useEffect(() => {
-      const handleDeepLink = async (url) => {
-          const token = url.split('/').pop();
-          await AsyncStorage.setItem('token', token);
-          const decodedToken = jwtDecode(token);
-          console.log("ORIGINAL JWT " , token)
-          console.log("DECODED JWT FROM DEEP LINK ",decodedToken);
-      };
-      const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
-      return () => {
-          subscription.remove();
-      };
-  }, []);
+    const handleDeepLink = async (url) => {
+        const token = url.split('/').pop();
+        await AsyncStorage.setItem('token', token);
+        const decodedToken = jwtDecode(token);
+        console.log("DECODED JWT FROM DEEP LINK ",decodedToken);
+    };
+    const subscription = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    return () => {
+        subscription.remove();
+    };
+}, []);
   return (
-    <PaperProvider>
-    <RecoilRoot>
+
     <NavigationContainer linking={linking}>
+      <PaperProvider>
+      <RecoilRoot>
       <Stack.Navigator initialRouteName="Landing">
         <Stack.Screen 
           name="Landing" 
@@ -99,9 +100,10 @@ const App = () => {
         <Stack.Screen name="Listening" component={ListeningScreen} 
         options={{ headerShown: false }}/>
       </Stack.Navigator>
+      </RecoilRoot>
+      </PaperProvider>
     </NavigationContainer>
-    </RecoilRoot>
-    </PaperProvider>
+
   );
 };
 
